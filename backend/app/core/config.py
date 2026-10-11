@@ -79,6 +79,18 @@ class Settings(BaseSettings):
         description="Standard logging level.",
     )
 
+    # --- Cross-Origin Resource Sharing (CORS) ---
+    CORS_ORIGINS: list[str] = Field(
+        default=[
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+            "http://localhost:8000",
+            "http://127.0.0.1:8000",
+            "https://tradingagent-eight.vercel.app",
+        ],
+        description="Allowed CORS origins for frontend clients. Supports CSV or list. Wildcards prohibited.",
+    )
+
     # --- Trading Mode & Strict Execution Controls ---
     TRADING_MODE: Literal["paper"] = Field(
         default="paper",
@@ -126,6 +138,46 @@ class Settings(BaseSettings):
                 f"Live Alpaca API endpoint detected ('{v}'). Only 'https://paper-api.alpaca.markets' is permitted."
             )
         return val
+
+    @field_validator("CORS_ORIGINS", mode="before")
+    @classmethod
+    def validate_cors_origins(cls, v: object) -> list[str]:
+        """Validate, clean, and normalize CORS origins. Prohibits wildcard origins."""
+        import json
+
+        origins: list[str] = []
+        if isinstance(v, str):
+            val = v.strip()
+            if val.startswith("[") and val.endswith("]"):
+                try:
+                    parsed = json.loads(val)
+                    if isinstance(parsed, list):
+                        origins = [str(item).strip() for item in parsed]
+                    else:
+                        origins = [item.strip() for item in val.strip("[]").split(",")]
+                except Exception:
+                    origins = [item.strip() for item in val.strip("[]").split(",")]
+            else:
+                origins = [item.strip() for item in val.split(",")]
+        elif isinstance(v, (list, tuple, set)):
+            origins = [str(item).strip() for item in v]
+        else:
+            raise ValueError(f"Invalid CORS_ORIGINS type: {type(v)}")
+
+        cleaned: list[str] = []
+        for origin in origins:
+            cleaned_origin = origin.strip().strip("'\"").rstrip("/")
+            if not cleaned_origin:
+                continue
+            if cleaned_origin == "*":
+                raise ValueError(
+                    "Wildcard '*' CORS origin is strictly prohibited for security. Specify explicit client domains."
+                )
+            cleaned.append(cleaned_origin)
+
+        if not cleaned:
+            raise ValueError("CORS_ORIGINS must contain at least one valid origin.")
+        return cleaned
 
     # --- Provider Readiness Helpers ---
     @property

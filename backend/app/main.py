@@ -26,6 +26,7 @@ async def lifespan(app: FastAPI):
     logger.info("Trading Mode: %s | Trading Enabled: %s", settings.TRADING_MODE, settings.TRADING_ENABLED)
     logger.info("Order Approval Required: %s", settings.ORDER_APPROVAL_REQUIRED)
     logger.info("Alpaca Endpoint: %s", settings.ALPACA_BASE_URL)
+    logger.info("CORS Allowed Origins: %s", settings.CORS_ORIGINS)
     if settings.is_langsmith_configured:
         import os
         os.environ["LANGSMITH_TRACING"] = "true"
@@ -58,12 +59,7 @@ app = FastAPI(
 # Configure Cross-Origin Resource Sharing (CORS) for frontend clients
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:8000",
-        "http://127.0.0.1:8000",
-    ],
+    allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
