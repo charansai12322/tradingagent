@@ -1,0 +1,73 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-ink: #252821;
+  --color-bone: #E9E4D9;
+  --color-chalk: #F5F1E8;
+  --color-oxide: #A34F3F;
+  --color-moss: #68765A;
+  --color-stone: #C9C2B5;
+  --color-muted: #77766D;
+  --color-positive: #357A52;
+  --color-negative: #A34F3F;
+  --color-warning: #966A24;
+}
+
+@layer base {
+  * {
+    border-color: #C9C2B5;
+  }
+
+  body {
+    background-color: #E9E4D9;
+    color: #252821;
+    font-family: var(--font-sans), Manrope, system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    min-height: 100vh;
+  }
+
+  ::selection {
+    background: #C9C2B5;
+    color: #252821;
+  }
+
+  /* Accessible focus indicators */
+  :focus-visible {
+    outline: 2px solid #252821;
+    outline-offset: 2px;
+  }
+}
+
+/* Restrained custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #E9E4D9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #C9C2B5;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #77766D;
+}
+
+/* Reduced motion accessibility */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
