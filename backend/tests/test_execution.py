@@ -176,3 +176,44 @@ async def test_execution_aborts_on_live_base_url():
     with pytest.raises(ExecutionServiceError) as exc_info:
         await svc.execute_approved_proposal(req)
     assert "not Alpaca Paper API" in str(exc_info.value)
+
+
+@pytest.mark.asyncio
+async def test_execution_msft_proposal_exceeding_cap_never_calls_alpaca():
+    """An MSFT proposal ($535.10) exceeding the $100 cap must be rejected by risk check and NEVER invoke Alpaca."""
+    settings = Settings(
+        ALPACA_API_KEY="test_key",
+        ALPACA_SECRET_KEY="test_secret",
+        ALPACA_BASE_URL="https://paper-api.alpaca.markets",
+        TRADING_MODE="paper",
+        TRADING_ENABLED=True,  # Even with execution enabled, risk check blocks submission
+        MAX_ORDER_NOTIONAL_USD=100.0,
+    )
+    svc = ExecutionService(settings)
+
+    now = datetime.now(timezone.utc)
+    proposal = ProposedOrder(
+        proposal_id="prop_msft_exec_blocked",
+        symbol="MSFT",
+        side=OrderSide.BUY,
+        quantity=1,
+        estimated_price=535.10,
+        estimated_notional=535.10,
+        status=OrderStatus.PROPOSED,
+        created_at=now.isoformat(),
+        expires_at=(now + timedelta(minutes=15)).isoformat(),
+    )
+    proposal_registry.register(proposal)
+
+    req = OrderApprovalRequest(proposal_id=proposal.proposal_id, confirm=True)
+
+    with respx.mock(assert_all_called=False) as respx_mock:
+        order_route = respx_mock.post("https://paper-api.alpaca.markets/v2/orders")
+        result = await svc.execute_approved_proposal(req)
+
+        assert result.success is False
+        assert result.filled_status == "REJECTED_BY_RISK_ENGINE"
+        assert "Order notional $535.10 exceeds MAX_ORDER_NOTIONAL_USD limit ($100.00)" in result.message
+        # MATHEMATICAL PROOF: Alpaca order endpoint was NEVER called!
+        assert order_route.call_count == 0
+

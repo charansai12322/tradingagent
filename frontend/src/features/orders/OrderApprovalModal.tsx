@@ -151,6 +151,18 @@ export const OrderApprovalModal: React.FC<OrderApprovalModalProps> = ({
             </div>
           )}
 
+          {proposal.estimated_notional > 100.0 && (
+            <div className="p-3 bg-[#A34F3F]/10 border border-oxide/40 rounded-sm text-oxide flex items-start gap-2">
+              <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+              <div>
+                <strong className="block font-semibold">Exceeds Maximum Order Cap ($100.00 Limit)</strong>
+                <span className="text-[11px] text-ink/80 leading-relaxed block mt-0.5">
+                  This proposal estimated total of <strong>${proposal.estimated_notional?.toFixed(2)}</strong> exceeds the maximum allowable order notional limit ($100.00). The backend risk engine will reject this order upon submission.
+                </span>
+              </div>
+            </div>
+          )}
+
           {/* Proposal Details Table */}
           <div className="border border-stone rounded-sm overflow-hidden">
             <div className="bg-bone px-3 py-2 border-b border-stone flex justify-between items-center text-[10px] font-mono uppercase text-muted tracking-wider">

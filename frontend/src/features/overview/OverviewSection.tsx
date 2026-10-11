@@ -130,25 +130,55 @@ export const OverviewSection: React.FC<OverviewSectionProps> = ({
             <div className="flex items-center justify-between pb-2 border-b border-stone/60">
               <span className="text-muted">Environment</span>
               <span className="font-mono text-ink font-medium">
-                {health?.app_env || "Unknown"}
+                {healthLoading ? "Verifying..." : health?.app_env || "Unknown"}
               </span>
             </div>
             <div className="flex items-center justify-between pb-2 border-b border-stone/60">
               <span className="text-muted">Trading Killswitch</span>
-              <span className="font-mono text-oxide font-medium">
-                {health?.trading_enabled ? "Active (Risk)" : "DISABLED (Safe)"}
+              <span
+                className={`font-mono font-medium ${
+                  healthLoading
+                    ? "text-muted"
+                    : health?.trading_enabled
+                    ? "text-oxide"
+                    : "text-positive"
+                }`}
+              >
+                {healthLoading
+                  ? "Verifying..."
+                  : health?.trading_enabled
+                  ? "Active (Risk)"
+                  : "DISABLED (Safe)"}
               </span>
             </div>
             <div className="flex items-center justify-between pb-2 border-b border-stone/60">
               <span className="text-muted">Human Approval</span>
-              <span className="font-mono text-positive font-medium">
-                {health?.order_approval_required ? "MANDATORY" : "Bypassed"}
+              <span
+                className={`font-mono font-medium ${
+                  healthLoading
+                    ? "text-muted"
+                    : health?.order_approval_required === true
+                    ? "text-positive"
+                    : health?.order_approval_required === false
+                    ? "text-oxide"
+                    : "text-muted"
+                }`}
+              >
+                {healthLoading
+                  ? "Verifying..."
+                  : health?.order_approval_required === true
+                  ? "MANDATORY"
+                  : health?.order_approval_required === false
+                  ? "OFF"
+                  : "Unknown"}
               </span>
             </div>
             <div className="flex items-center justify-between pt-1">
               <span className="text-muted">Active Providers</span>
               <span className="font-mono text-ink">
-                {health?.providers
+                {healthLoading
+                  ? "Verifying..."
+                  : health?.providers
                   ? Object.values(health.providers).filter(Boolean).length + " configured"
                   : "0 available"}
               </span>

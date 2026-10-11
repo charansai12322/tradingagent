@@ -163,11 +163,12 @@ export const OrderReviewSection: React.FC<OrderReviewSectionProps> = ({
                       ID: {prop.proposal_id}
                     </span>
                   </div>
-                  <div className="flex items-center gap-4 text-xs font-mono text-ink/80">
+                  <div className="flex items-center gap-4 text-xs font-mono text-ink/80 flex-wrap">
                     <span>Quantity: {prop.quantity} share(s)</span>
                     <span>Est. Price: ${prop.estimated_price?.toFixed(2)}</span>
-                    <span className="font-semibold">
+                    <span className={prop.estimated_notional > 100.0 ? "font-semibold text-oxide" : "font-semibold text-ink"}>
                       Total: ${prop.estimated_notional?.toFixed(2)}
+                      {prop.estimated_notional > 100.0 && " (Exceeds $100 Cap)"}
                     </span>
                   </div>
                   <p className="text-[11px] font-mono text-muted mt-1">

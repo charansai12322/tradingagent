@@ -272,3 +272,164 @@ def test_risk_passes_sell_with_owned_shares(base_settings, sample_portfolio):
 
     assert result.passed is True
     assert returned_prop is not None
+
+
+def test_risk_rejects_order_exceeding_order_cap_msft_case(base_settings):
+    """The MSFT proposal ($535.10) exceeds the $100 cap and MUST be rejected by risk engine."""
+    engine = RiskEngine(base_settings)
+    now = datetime.now(timezone.utc)
+    proposal = ProposedOrder(
+        proposal_id="prop_msft_cap_exceeded",
+        symbol="MSFT",
+        side=OrderSide.BUY,
+        quantity=1,
+        estimated_price=535.10,
+        estimated_notional=535.10,
+        status=OrderStatus.PROPOSED,
+        created_at=now.isoformat(),
+        expires_at=(now + timedelta(minutes=15)).isoformat(),
+    )
+    proposal_registry.register(proposal)
+
+    req = OrderApprovalRequest(proposal_id=proposal.proposal_id, confirm=True)
+    result, _ = engine.evaluate_approval(req)
+
+    assert result.passed is False
+    assert any("Order notional $535.10 exceeds MAX_ORDER_NOTIONAL_USD limit ($100.00)" in r for r in result.rejection_reasons)
+
+
+def test_risk_boundary_exact_order_notional_cap_100(base_settings):
+    """An order with estimated_notional EXACTLY equal to $100.00 must PASS order notional cap."""
+    engine = RiskEngine(base_settings)
+    now = datetime.now(timezone.utc)
+    proposal = ProposedOrder(
+        proposal_id="prop_boundary_100_pass",
+        symbol="AAPL",
+        side=OrderSide.BUY,
+        quantity=1,
+        estimated_price=100.00,
+        estimated_notional=100.00,
+        status=OrderStatus.PROPOSED,
+        created_at=now.isoformat(),
+        expires_at=(now + timedelta(minutes=15)).isoformat(),
+    )
+    proposal_registry.register(proposal)
+
+    req = OrderApprovalRequest(proposal_id=proposal.proposal_id, confirm=True)
+    result, _ = engine.evaluate_approval(req)
+
+    # Order notional check passes (100.00 <= 100.00)
+    assert not any("MAX_ORDER_NOTIONAL_USD" in r for r in result.rejection_reasons)
+    assert result.passed is True
+
+
+def test_risk_boundary_order_notional_cap_100_01_rejected(base_settings):
+    """An order with estimated_notional equal to $100.01 (one cent over limit) must be REJECTED."""
+    engine = RiskEngine(base_settings)
+    now = datetime.now(timezone.utc)
+    proposal = ProposedOrder(
+        proposal_id="prop_boundary_100_01_reject",
+        symbol="AAPL",
+        side=OrderSide.BUY,
+        quantity=1,
+        estimated_price=100.01,
+        estimated_notional=100.01,
+        status=OrderStatus.PROPOSED,
+        created_at=now.isoformat(),
+        expires_at=(now + timedelta(minutes=15)).isoformat(),
+    )
+    proposal_registry.register(proposal)
+
+    req = OrderApprovalRequest(proposal_id=proposal.proposal_id, confirm=True)
+    result, _ = engine.evaluate_approval(req)
+
+    assert result.passed is False
+    assert any("Order notional $100.01 exceeds MAX_ORDER_NOTIONAL_USD limit ($100.00)" in r for r in result.rejection_reasons)
+
+
+def test_risk_boundary_exact_position_exposure_cap_500(base_settings):
+    """Position with $400 existing market value + $100 new order = $500.00 total. Must PASS position cap."""
+    engine = RiskEngine(base_settings)
+    now = datetime.now(timezone.utc)
+
+    portfolio = PortfolioResponse(
+        account_status="ACTIVE",
+        currency="USD",
+        cash=10000.0,
+        portfolio_value=10400.0,
+        buying_power=20000.0,
+        positions=[
+            PortfolioPosition(
+                symbol="MSFT",
+                qty=2,
+                avg_entry_price=200.0,
+                current_price=200.0,
+                market_value=400.00,
+            )
+        ],
+        timestamp=now.isoformat(),
+    )
+
+    proposal = ProposedOrder(
+        proposal_id="prop_pos_cap_exact_500",
+        symbol="MSFT",
+        side=OrderSide.BUY,
+        quantity=1,
+        estimated_price=100.00,
+        estimated_notional=100.00,
+        status=OrderStatus.PROPOSED,
+        created_at=now.isoformat(),
+        expires_at=(now + timedelta(minutes=15)).isoformat(),
+    )
+    proposal_registry.register(proposal)
+
+    req = OrderApprovalRequest(proposal_id=proposal.proposal_id, confirm=True)
+    result, _ = engine.evaluate_approval(req, portfolio=portfolio)
+
+    # 400.00 + 100.00 = 500.00 <= 500.00, so position cap passes
+    assert not any("MAX_POSITION_NOTIONAL_USD" in r for r in result.rejection_reasons)
+    assert result.passed is True
+
+
+def test_risk_boundary_position_exposure_cap_500_01_rejected(base_settings):
+    """Position with $400.01 existing market value + $100 new order = $500.01 total. Must be REJECTED."""
+    engine = RiskEngine(base_settings)
+    now = datetime.now(timezone.utc)
+
+    portfolio = PortfolioResponse(
+        account_status="ACTIVE",
+        currency="USD",
+        cash=10000.0,
+        portfolio_value=10400.01,
+        buying_power=20000.0,
+        positions=[
+            PortfolioPosition(
+                symbol="MSFT",
+                qty=2,
+                avg_entry_price=200.0,
+                current_price=200.0,
+                market_value=400.01,
+            )
+        ],
+        timestamp=now.isoformat(),
+    )
+
+    proposal = ProposedOrder(
+        proposal_id="prop_pos_cap_500_01_reject",
+        symbol="MSFT",
+        side=OrderSide.BUY,
+        quantity=1,
+        estimated_price=100.00,
+        estimated_notional=100.00,
+        status=OrderStatus.PROPOSED,
+        created_at=now.isoformat(),
+        expires_at=(now + timedelta(minutes=15)).isoformat(),
+    )
+    proposal_registry.register(proposal)
+
+    req = OrderApprovalRequest(proposal_id=proposal.proposal_id, confirm=True)
+    result, _ = engine.evaluate_approval(req, portfolio=portfolio)
+
+    assert result.passed is False
+    assert any("Projected position value $500.01 exceeds MAX_POSITION_NOTIONAL_USD ($500.00)" in r for r in result.rejection_reasons)
+
